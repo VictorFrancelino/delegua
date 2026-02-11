@@ -1,7 +1,5 @@
 import { MicroLexadorPitugues } from '../../../../fontes/lexador/micro-lexador-pitugues';
 
-
-
 describe('Lexador', () => {
     describe('mapear()', () => {
         let microLexadorPitugues: MicroLexadorPitugues;

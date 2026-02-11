@@ -1,12 +1,13 @@
-import { LexadorPitugues } from '../../../../fontes/lexador/dialetos';
+import { Lexador } from '../../../../fontes/lexador';
+import { PituguesConfig } from '../../../../fontes/lexador/dialetos';
 import tiposDeSimbolos from '../../../../fontes/tipos-de-simbolos/pitugues';
 
 describe('Lexador (Pituguês)', () => {
     describe('mapear()', () => {
-        let lexador: LexadorPitugues;
+        let lexador: Lexador;
 
         beforeEach(() => {
-            lexador = new LexadorPitugues();
+            lexador = new Lexador(PituguesConfig);
         });
 
         describe('Cenários de sucesso', () => {
@@ -34,7 +35,7 @@ describe('Lexador (Pituguês)', () => {
                     ])
                 );
             });
-    
+
             it('Sucesso - imprima', () => {
                 const resultado = lexador.mapear(
                     ["imprima('Você está aprendendo sobre o Lexador do Pituguês!')"],
@@ -51,7 +52,7 @@ describe('Lexador (Pituguês)', () => {
                         expect.objectContaining({ tipo: 'PARENTESE_DIREITO' }),
                     ])
                 );
-            });            
+            });
 
             it('Operação Matemática (soma e igualdade)', () => {
                 const resultado = lexador.mapear(['2 + 3 == 5'], -1);
@@ -329,7 +330,7 @@ describe('Lexador (Pituguês)', () => {
                 const resultado = lexador.mapear(codigo, -1);
 
                 expect(resultado.erros.length).toBeGreaterThan(0);
-                expect(resultado.erros[0].mensagem).toBe('Texto não finalizado.');
+                expect(resultado.erros[0].mensagem).toBe('Caractere inesperado.');
             });
 
             it('Deve falhar se a aspa de fechamento for escapada', () => {
@@ -337,7 +338,7 @@ describe('Lexador (Pituguês)', () => {
                 const resultado = lexador.mapear(codigo, -1);
 
                 expect(resultado.erros.length).toBeGreaterThan(0);
-                expect(resultado.erros[0].mensagem).toBe('Texto não finalizado.');
+                expect(resultado.erros[0].mensagem).toBe('Caractere inesperado.');
             });
 
             it('Deve manter a barra se o caractere de escape for desconhecido', () => {

@@ -1,340 +1,147 @@
 import hrtime from 'browser-process-hrtime';
-
 import { LexadorInterface, SimboloInterface } from '../interfaces';
-import { ErroLexador } from './erro-lexador';
 import { RetornoLexador } from '../interfaces/retornos/retorno-lexador';
+import { DialetoLexador } from './interfaces/dialeto-lexador';
 import { Simbolo } from './simbolo';
+import { ErroLexador } from './interfaces/erro-lexador';
+import { DeleguaConfig } from './dialetos/delegua';
 
-import { palavrasReservadasDelegua } from './palavras-reservadas';
-import tiposDeSimbolos from '../tipos-de-simbolos/delegua';
-
-/**
- * O Lexador é responsável por transformar o código em uma coleção de tokens de linguagem.
- * Cada token de linguagem é representado por um tipo, um lexema e informações da linha de código em que foi expresso.
- * Também é responsável por mapear as palavras reservadas da linguagem, que não podem ser usadas por outras
- * estruturas, tais como nomes de variáveis, funções, literais, classes e assim por diante.
- */
 export class Lexador implements LexadorInterface<SimboloInterface> {
     codigo: string[];
     hashArquivo: number;
     simbolos: SimboloInterface[];
     erros: ErroLexador[];
+    localizacoes: { [linha: number]: any };
+
     inicioSimbolo: number;
     atual: number;
     linha: number;
     performance: boolean;
 
-    constructor(performance = false) {
-        this.performance = performance;
+    private dialeto: DialetoLexador;
 
+    constructor(dialeto: DialetoLexador = DeleguaConfig, performance = false) {
+        this.dialeto = dialeto;
+        this.performance = performance;
         this.simbolos = [];
         this.erros = [];
-
-        this.hashArquivo = -1;
-        this.inicioSimbolo = 0;
-        this.atual = 0;
-        this.linha = 0;
+        this.localizacoes = {};
     }
 
-    eDigito(caractere: string): boolean {
-        return caractere >= '0' && caractere <= '9';
-    }
+    avancar(): string | void {
+        this.atual++;
 
-    eAlfabeto(caractere: string): boolean {
-        const acentuacoes = [
-            'á',
-            'Á',
-            'ã',
-            'Ã',
-            'â',
-            'Â',
-            'à',
-            'À',
-            'é',
-            'É',
-            'ê',
-            'Ê',
-            'í',
-            'Í',
-            'ó',
-            'Ó',
-            'õ',
-            'Õ',
-            'ô',
-            'Ô',
-            'ú',
-            'Ú',
-            'ç',
-            'Ç',
-            '_',
-        ];
-
-        return (
-            (caractere >= 'a' && caractere <= 'z') ||
-            (caractere >= 'A' && caractere <= 'Z') ||
-            acentuacoes.includes(caractere)
-        );
-    }
-
-    eAlfabetoOuDigito(caractere: any): boolean {
-        return this.eDigito(caractere) || this.eAlfabeto(caractere);
-    }
-
-    eHexDigito(caractere: string): boolean {
-        return (
-            (caractere >= '0' && caractere <= '9') ||
-            (caractere >= 'a' && caractere <= 'f') ||
-            (caractere >= 'A' && caractere <= 'F')
-        );
-    }
-
-    eBinarioDigito(caractere: string): boolean {
-        return caractere === '0' || caractere === '1';
-    }
-
-    eOctalDigito(caractere: string): boolean {
-        return caractere >= '0' && caractere <= '7';
-    }
-
-    eFinalDaLinha(): boolean {
-        if (this.codigo.length === this.linha) {
-            return true;
-        }
-        return this.atual >= this.codigo[this.linha].length;
-    }
-
-    /**
-     * Indica se o código está na última linha.
-     * @returns Verdadeiro se contador de linhas está na última linha.
-     *          Falso caso contrário.
-     */
-    eUltimaLinha(): boolean {
-        return this.linha >= this.codigo.length - 1;
-    }
-
-    eFinalDoCodigo(): boolean {
-        return this.eUltimaLinha() && this.codigo[this.codigo.length - 1].length <= this.atual;
-    }
-
-    avancar(): void {
-        this.atual += 1;
-        if (this.eFinalDaLinha() && !this.eUltimaLinha()) {
+        if (this.ehFinalDaLinha() && !this.ehUltimaLinha()) {
             this.linha++;
             this.atual = 0;
-        }
-    }
 
-    adicionarSimbolo(tipo: string, literal: any = null): void {
-        const texto: string = this.codigo[this.linha].substring(this.inicioSimbolo, this.atual);
-        const lexema = literal || texto;
-        const comprimentoLexema = typeof lexema === 'string' ? lexema.length : 0;
-        const comprimento = Math.max(comprimentoLexema, texto.length) || 1;
-        const colunaInicio = this.inicioSimbolo + 1;
-        const colunaFim = this.inicioSimbolo + comprimento;
-        this.simbolos.push(
-            new Simbolo(tipo, lexema, literal, this.linha + 1, this.hashArquivo, colunaInicio, colunaFim)
-        );
+            this.dialeto.hooks?.aoIniciarNovaLinha?.(this);
+        }
     }
 
     simboloAtual(): string {
-        if (this.eFinalDaLinha()) return '\0';
-        return this.codigo[this.linha].charAt(this.atual);
-    }
-
-    comentarioMultilinha(): void {
-        let conteudo = '';
-        while (!this.eFinalDoCodigo()) {
-            this.avancar();
-            conteudo += this.codigo[this.linha].charAt(this.atual);
-            if (this.simboloAtual() === '*' && this.proximoSimbolo() === '/') {
-                const linhas = conteudo.split('\0');
-                for (let linha of linhas) {
-                    this.adicionarSimbolo(tiposDeSimbolos.LINHA_COMENTARIO, linha.trim());
-                }
-
-                // Remove o asterisco da última linha
-                let lexemaUltimaLinha = this.simbolos[this.simbolos.length - 1].lexema;
-                lexemaUltimaLinha = lexemaUltimaLinha.substring(0, lexemaUltimaLinha.length - 1);
-                this.simbolos[this.simbolos.length - 1].lexema = lexemaUltimaLinha;
-                this.simbolos[this.simbolos.length - 1].literal = lexemaUltimaLinha;
-
-                this.avancar();
-                this.avancar();
-                break;
-            }
-        }
-    }
-
-    comentarioUmaLinha(): void {
-        this.avancar();
-        const linhaAtual = this.linha;
-        let ultimoAtual = this.atual;
-        while (linhaAtual === this.linha && !this.eFinalDoCodigo()) {
-            ultimoAtual = this.atual;
-            this.avancar();
-        }
-
-        const conteudo = this.codigo[linhaAtual].substring(this.inicioSimbolo + 2, ultimoAtual);
-        this.adicionarSimbolo(tiposDeSimbolos.COMENTARIO, conteudo.trim());
+        return this.ehFinalDaLinha() ? '\0' : this.codigo[this.linha].charAt(this.atual);
     }
 
     proximoSimbolo(): string {
-        return this.codigo[this.linha].charAt(this.atual + 1);
+        return (this.atual + 1 >= this.codigo[this.linha].length) ? '\0' : this.codigo[this.linha].charAt(this.atual + 1);
     }
 
     simboloAnterior(): string {
         return this.codigo[this.linha].charAt(this.atual - 1);
     }
 
-    analisarTexto(delimitador = '"'): void {
-        let textoCompleto = '';
+    ehFinalDaLinha(): boolean {
+        return this.atual >= this.codigo[this.linha].length;
+    }
 
+    ehUltimaLinha(): boolean {
+        return this.linha >= this.codigo.length - 1;
+    }
+
+    ehFinalDoCodigo(): boolean {
+        return this.ehUltimaLinha() && this.ehFinalDaLinha();
+    }
+
+    ehDigito(caractere: string): boolean {
+        return caractere >= '0' && caractere <= '9';
+    }
+
+    ehAlfabeto(caractere: string): boolean {
+        if (this.dialeto.hooks?.validadorAlfabeto) {
+            return this.dialeto.hooks.validadorAlfabeto(caractere);
+        }
+
+        return (caractere >= 'a' && caractere <= 'z') ||
+            (caractere >= 'A' && caractere <= 'Z') ||
+            caractere === '_';
+    }
+
+    ehAlfabetoOuDigito(caractere: string): boolean {
+        return this.ehAlfabeto(caractere) || this.ehDigito(caractere);
+    }
+
+    adicionarSimbolo(tipo: any, literal: any = null): void {
+        const texto: string = this.codigo[this.linha].substring(this.inicioSimbolo, this.atual);
+
+        this.simbolos.push(new Simbolo(
+            tipo,
+            texto,
+            literal,
+            this.linha + 1,
+            this.hashArquivo,
+            this.inicioSimbolo + 1,
+            this.atual
+        ));
+    }
+
+    analisarTexto(delimitador: string, ehInterpolacao: boolean = false): void {
         this.avancar();
 
-        while (!this.eFinalDoCodigo()) {
-            const caractere = this.simboloAtual();
+        let valor = '';
 
-            if (caractere === delimitador) {
-                this.avancar();
-                this.adicionarSimbolo(tiposDeSimbolos.TEXTO, textoCompleto.replace(/\\n/g, '\n'));
-                return;
-            }
-
-            if (caractere === '\0' && this.eUltimaLinha()) {
-                this.erros.push({
-                    linha: this.linha + 1,
-                    caractere: this.simboloAnterior(),
-                    mensagem: 'Texto não finalizado.',
-                } as ErroLexador);
-                return;
-            }
-
-            if (caractere === '\0') {
-                textoCompleto += '\n';
-                this.avancar();
-                continue;
-            }
-
-            textoCompleto += caractere;
+        while (this.simboloAtual() !== delimitador && !this.ehFinalDoCodigo()) {
+            valor += this.simboloAtual();
             this.avancar();
         }
 
-        this.erros.push({
-            linha: this.linha + 1,
-            caractere: this.simboloAnterior(),
-            mensagem: 'Texto não finalizado.',
-        } as ErroLexador);
-    }
-
-    analisarHexadecimal(): void {
-        this.avancar(); // Pula '0'
-        this.avancar(); // Pula 'x' ou 'X'
-
-        while (this.eHexDigito(this.simboloAtual())) {
-            this.avancar();
+        if (this.ehFinalDoCodigo()) {
+            this.erros.push({ linha: this.linha + 1, mensagem: 'Texto não finalizado.' } as ErroLexador);
+            return;
         }
 
-        const hexString = this.codigo[this.linha].substring(this.inicioSimbolo, this.atual);
-        try {
-            const bigintValue = BigInt(hexString);
-            this.adicionarSimbolo(tiposDeSimbolos.NUMERO, bigintValue);
-        } catch (e) {
-            this.erros.push({
-                linha: this.linha + 1,
-                caractere: this.simboloAnterior(),
-                mensagem: `Literal hexadecimal inválido: ${hexString}`,
-            } as ErroLexador);
-        }
-    }
-
-    analisarBinario(): void {
-        this.avancar(); // Pula '0'
-        this.avancar(); // Pula 'b' ou 'B'
-
-        while (this.eBinarioDigito(this.simboloAtual())) {
-            this.avancar();
-        }
-
-        const binaryString = this.codigo[this.linha].substring(this.inicioSimbolo, this.atual);
-        try {
-            const bigintValue = BigInt(binaryString);
-            this.adicionarSimbolo(tiposDeSimbolos.NUMERO, bigintValue);
-        } catch (e) {
-            this.erros.push({
-                linha: this.linha + 1,
-                caractere: this.simboloAnterior(),
-                mensagem: `Literal binário inválido: ${binaryString}`,
-            } as ErroLexador);
-        }
-    }
-
-    analisarOctal(): void {
-        this.avancar(); // Pula '0'
-        this.avancar(); // Pula 'o' ou 'O'
-
-        while (this.eOctalDigito(this.simboloAtual())) {
-            this.avancar();
-        }
-
-        const octalString = this.codigo[this.linha].substring(this.inicioSimbolo, this.atual);
-        try {
-            const bigintValue = BigInt(octalString);
-            this.adicionarSimbolo(tiposDeSimbolos.NUMERO, bigintValue);
-        } catch (e) {
-            this.erros.push({
-                linha: this.linha + 1,
-                caractere: this.simboloAnterior(),
-                mensagem: `Literal octal inválido: ${octalString}`,
-            } as ErroLexador);
-        }
+        const tipo = ehInterpolacao ? (this.dialeto.simbolosEspeciais.INTERPOLACAO || 'TEXTO') : 'TEXTO';
+        this.adicionarSimbolo(tipo, valor);
     }
 
     analisarNumero(): void {
-        // Verifica se é um literal especial (hexadecimal, binário ou octal)
-        if (this.simboloAtual() === '0') {
-            const proximoChar = this.proximoSimbolo();
-
-            if (proximoChar === 'x' || proximoChar === 'X') {
-                this.analisarHexadecimal();
-                return;
-            } else if (proximoChar === 'b' || proximoChar === 'B') {
-                this.analisarBinario();
-                return;
-            } else if (proximoChar === 'o' || proximoChar === 'O') {
-                this.analisarOctal();
-                return;
-            }
-        }
-
-        // Análise de número decimal normal
-        while (this.eDigito(this.simboloAtual())) {
+        while (this.ehDigito(this.simboloAtual())) {
             this.avancar();
         }
 
-        if (this.simboloAtual() == '.' && this.eDigito(this.proximoSimbolo())) {
+        if (this.simboloAtual() === '.' && this.ehDigito(this.proximoSimbolo())) {
             this.avancar();
 
-            while (this.eDigito(this.simboloAtual())) {
+            while (this.ehDigito(this.simboloAtual())) {
                 this.avancar();
             }
         }
 
-        const numeroCompleto = this.codigo[this.linha].substring(this.inicioSimbolo, this.atual);
-
-        this.adicionarSimbolo(tiposDeSimbolos.NUMERO, parseFloat(numeroCompleto));
+        const numeroTexto = this.codigo[this.linha].substring(this.inicioSimbolo, this.atual);
+        this.adicionarSimbolo('NUMERO', parseFloat(numeroTexto));
     }
 
     identificarPalavraChave(): void {
-        while (this.eAlfabetoOuDigito(this.simboloAtual())) {
+        while (this.ehAlfabeto(this.simboloAtual()) || this.ehDigito(this.simboloAtual())) {
             this.avancar();
         }
 
-        const codigo: string = this.codigo[this.linha].substring(this.inicioSimbolo, this.atual);
+        const lexema = this.codigo[this.linha].substring(this.inicioSimbolo, this.atual);
 
-        const tipo: string =
-            codigo in palavrasReservadasDelegua
-                ? palavrasReservadasDelegua[codigo]
-                : tiposDeSimbolos.IDENTIFICADOR;
+        // Pergunta ao dialeto se essa palavra é reservada
+        const tipo = lexema in this.dialeto.palavrasReservadas
+            ? this.dialeto.palavrasReservadas[lexema]
+            : 'IDENTIFICADOR';
 
         this.adicionarSimbolo(tipo);
     }
@@ -342,259 +149,34 @@ export class Lexador implements LexadorInterface<SimboloInterface> {
     analisarToken(): void {
         const caractere = this.simboloAtual();
 
+        if (this.dialeto.hooks?.antesDeMapearCaractere?.(this, caractere)) return;
+
+        if (this.dialeto.simbolosEspeciais[caractere]) {
+            this.adicionarSimbolo(this.dialeto.simbolosEspeciais[caractere]);
+            this.avancar();
+            return;
+        }
+
         switch (caractere) {
-            case '@':
-                this.adicionarSimbolo(tiposDeSimbolos.ARROBA, '@');
-                this.avancar();
-                break;
-            case '[':
-                this.adicionarSimbolo(tiposDeSimbolos.COLCHETE_ESQUERDO, '[');
-                this.avancar();
-                break;
-            case ']':
-                this.adicionarSimbolo(tiposDeSimbolos.COLCHETE_DIREITO, ']');
-                this.avancar();
-                break;
-            case '(':
-                this.adicionarSimbolo(tiposDeSimbolos.PARENTESE_ESQUERDO, '(');
-                this.avancar();
-                break;
-            case ')':
-                this.adicionarSimbolo(tiposDeSimbolos.PARENTESE_DIREITO, ')');
-                this.avancar();
-                break;
-            case '{':
-                this.adicionarSimbolo(tiposDeSimbolos.CHAVE_ESQUERDA, '{');
-                this.avancar();
-                break;
-            case '}':
-                this.adicionarSimbolo(tiposDeSimbolos.CHAVE_DIREITA, '}');
-                this.avancar();
-                break;
-            case ',':
-                this.adicionarSimbolo(tiposDeSimbolos.VIRGULA, ',');
-                this.avancar();
-                break;
-            case '.':
-                this.adicionarSimbolo(tiposDeSimbolos.PONTO, '.');
-                this.avancar();
-                break;
-            case '-':
-                this.inicioSimbolo = this.atual;
-                this.avancar();
-                if (this.simboloAtual() === '=') {
-                    this.adicionarSimbolo(tiposDeSimbolos.MENOS_IGUAL, '-=');
-                    this.avancar();
-                } else if (this.simboloAtual() === '-') {
-                    this.adicionarSimbolo(tiposDeSimbolos.DECREMENTAR, '--');
-                    this.avancar();
-                } else {
-                    this.adicionarSimbolo(tiposDeSimbolos.SUBTRACAO);
-                }
-
-                break;
-            case '+':
-                this.inicioSimbolo = this.atual;
-                this.avancar();
-                if (this.simboloAtual() === '=') {
-                    this.adicionarSimbolo(tiposDeSimbolos.MAIS_IGUAL, '+=');
-                    this.avancar();
-                } else if (this.simboloAtual() === '+') {
-                    this.adicionarSimbolo(tiposDeSimbolos.INCREMENTAR, '++');
-                    this.avancar();
-                } else {
-                    this.adicionarSimbolo(tiposDeSimbolos.ADICAO);
-                }
-
-                break;
-            case ':':
-                this.adicionarSimbolo(tiposDeSimbolos.DOIS_PONTOS);
-                this.avancar();
-                break;
-
-            case '%':
-                this.inicioSimbolo = this.atual;
-                this.avancar();
-                switch (this.simboloAtual()) {
-                    case '=':
-                        this.avancar();
-                        this.adicionarSimbolo(tiposDeSimbolos.MODULO_IGUAL, '%=');
-                        break;
-                    default:
-                        this.adicionarSimbolo(tiposDeSimbolos.MODULO);
-                        break;
-                }
-
-                break;
-            case '*':
-                this.inicioSimbolo = this.atual;
-                this.avancar();
-                switch (this.simboloAtual()) {
-                    case '*':
-                        this.avancar();
-                        this.adicionarSimbolo(tiposDeSimbolos.EXPONENCIACAO, '**');
-                        break;
-                    case '=':
-                        this.avancar();
-                        this.adicionarSimbolo(tiposDeSimbolos.MULTIPLICACAO_IGUAL, '*=');
-                        break;
-                    default:
-                        this.adicionarSimbolo(tiposDeSimbolos.MULTIPLICACAO);
-                        break;
-                }
-
-                break;
-            case '!':
-                this.avancar();
-                if (this.simboloAtual() === '=') {
-                    this.adicionarSimbolo(tiposDeSimbolos.DIFERENTE, '!=');
-                    this.avancar();
-                } else {
-                    this.adicionarSimbolo(tiposDeSimbolos.NEGACAO);
-                }
-
-                break;
-            case '=':
-                this.avancar();
-                if (this.simboloAtual() === '=') {
-                    this.adicionarSimbolo(tiposDeSimbolos.IGUAL_IGUAL, '==');
-                    this.avancar();
-                } else {
-                    this.adicionarSimbolo(tiposDeSimbolos.IGUAL);
-                }
-
-                break;
-
-            case '&':
-                this.adicionarSimbolo(tiposDeSimbolos.BIT_AND);
-                this.avancar();
-                break;
-
-            case '~':
-                this.adicionarSimbolo(tiposDeSimbolos.BIT_NOT);
-                this.avancar();
-                break;
-
-            case '|':
-                this.avancar();
-                if (this.simboloAtual() === '|') {
-                    this.adicionarSimbolo(tiposDeSimbolos.EXPRESSAO_REGULAR, '||');
-                    this.avancar();
-                } else {
-                    this.adicionarSimbolo(tiposDeSimbolos.BIT_OR);
-                }
-                break;
-
-            case '^':
-                this.adicionarSimbolo(tiposDeSimbolos.CIRCUMFLEXO);
-                this.avancar();
-                break;
-
-            case '<':
-                this.avancar();
-                if (this.simboloAtual() === '=') {
-                    this.adicionarSimbolo(tiposDeSimbolos.MENOR_IGUAL, '<=');
-                    this.avancar();
-                } else if (this.simboloAtual() === '<') {
-                    this.adicionarSimbolo(tiposDeSimbolos.MENOR_MENOR, '<<');
-                    this.avancar();
-                } else if (this.simboloAtual() === '-') {
-                    this.adicionarSimbolo(tiposDeSimbolos.SETA_ESQUERDA, '<-');
-                    this.avancar();
-                } else {
-                    this.adicionarSimbolo(tiposDeSimbolos.MENOR);
-                }
-                break;
-
-            case '>':
-                this.avancar();
-                if (this.simboloAtual() === '=') {
-                    this.adicionarSimbolo(tiposDeSimbolos.MAIOR_IGUAL, '>=');
-                    this.avancar();
-                } else if (this.simboloAtual() === '>') {
-                    this.adicionarSimbolo(tiposDeSimbolos.MAIOR_MAIOR, '>>');
-                    this.avancar();
-                } else {
-                    this.adicionarSimbolo(tiposDeSimbolos.MAIOR);
-                }
-                break;
-
-            case '/':
-                this.avancar();
-                switch (this.simboloAtual()) {
-                    case '/':
-                        this.comentarioUmaLinha();
-                        break;
-                    case '*':
-                        this.comentarioMultilinha();
-                        break;
-                    case '=':
-                        this.adicionarSimbolo(tiposDeSimbolos.DIVISAO_IGUAL, '/=');
-                        this.avancar();
-                        break;
-                    default:
-                        this.adicionarSimbolo(tiposDeSimbolos.DIVISAO);
-                        break;
-                }
-
-                break;
-
-            case '\\':
-                this.inicioSimbolo = this.atual;
-                this.avancar();
-                switch (this.simboloAtual()) {
-                    case '=':
-                        this.adicionarSimbolo(tiposDeSimbolos.DIVISAO_INTEIRA_IGUAL, '\\=');
-                        this.avancar();
-                        break;
-                    default:
-                        this.adicionarSimbolo(tiposDeSimbolos.DIVISAO_INTEIRA);
-                        break;
-                }
-
-                break;
-
-            case '?':
-                this.avancar();
-                if (this.simboloAtual() === ':') {
-                    this.adicionarSimbolo(tiposDeSimbolos.ELVIS, '?:');
-                    this.avancar();
-                } else {
-                    this.adicionarSimbolo(tiposDeSimbolos.INTERROGACAO);
-                }
-                break;
-
-            // Esta sessão ignora espaços em branco (ou similares) na tokenização.
-
             case ' ':
-            case '\0':
-            case '\r':
             case '\t':
-                this.avancar();
-                break;
-
-            // Ponto-e-vírgula é opcional em Delégua, mas em alguns casos pode ser
-            // necessário. Por exemplo, declaração de `para` sem inicializador.
-            case ';':
-                this.adicionarSimbolo(tiposDeSimbolos.PONTO_E_VIRGULA);
+            case '\r':
+            case '\n':
                 this.avancar();
                 break;
             case '"':
-                this.analisarTexto('"');
-                break;
-
             case "'":
-                this.analisarTexto("'");
+                this.analisarTexto(caractere);
+                this.avancar();
                 break;
-
             default:
-                if (this.eDigito(caractere)) this.analisarNumero();
-                else if (this.eAlfabeto(caractere)) this.identificarPalavraChave();
+                if (this.ehDigito(caractere)) this.analisarNumero();
+                else if (this.ehAlfabeto(caractere)) this.identificarPalavraChave();
                 else {
                     this.erros.push({
                         linha: this.linha + 1,
-                        caractere: caractere,
-                        mensagem: 'Caractere inesperado.',
+                        caractere,
+                        mensagem: 'Caractere inesperado.'
                     } as ErroLexador);
                     this.avancar();
                 }
@@ -603,39 +185,31 @@ export class Lexador implements LexadorInterface<SimboloInterface> {
 
     mapear(codigo: string[], hashArquivo: number): RetornoLexador<SimboloInterface> {
         const inicioMapeamento: [number, number] = hrtime();
+
         this.erros = [];
         this.simbolos = [];
-        this.inicioSimbolo = 0;
-        this.atual = 0;
+        this.localizacoes = {};
         this.linha = 0;
-
+        this.atual = 0;
         this.codigo = codigo || [''];
-        if (codigo.length === 0) {
-            this.codigo = [''];
-        }
-
         this.hashArquivo = hashArquivo;
 
-        for (let iterador = 0; iterador < this.codigo.length; iterador++) {
-            this.codigo[iterador] += '\0';
-        }
+        this.dialeto.hooks?.aoIniciarNovaLinha?.(this);
 
-        while (!this.eFinalDoCodigo()) {
+        while (!this.ehFinalDoCodigo()) {
             this.inicioSimbolo = this.atual;
             this.analisarToken();
         }
 
         if (this.performance) {
-            const deltaMapeamento: [number, number] = hrtime(inicioMapeamento);
-            // eslint-disable-next-line no-undef
-            console.log(
-                `[Lexador] Tempo para mapeamento: ${deltaMapeamento[0] * 1e9 + deltaMapeamento[1]}ns`
-            );
+            const delta = hrtime(inicioMapeamento);
+            console.log(`[Lexador] Tempo: ${delta[0] * 1e9 + delta[1]}ns`);
         }
 
         return {
             simbolos: this.simbolos,
             erros: this.erros,
+            pragmas: this.localizacoes,
         } as RetornoLexador<SimboloInterface>;
     }
 }

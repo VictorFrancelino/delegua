@@ -1,11 +1,12 @@
-import { LexadorCalango } from '../../../../fontes/lexador/dialetos/lexador-calango';
+import { Lexador } from '../../../../fontes/lexador';
+import { CalangoConfig } from '../../../../fontes/lexador/dialetos';
 
 describe('Lexador (Calango)', () => {
     describe('mapear()', () => {
-        let lexador: LexadorCalango;
+        let lexador: Lexador;
 
         beforeEach(() => {
-            lexador = new LexadorCalango();
+            lexador = new Lexador(CalangoConfig);
         });
 
         describe('Cenários de sucesso', () => {
@@ -19,11 +20,11 @@ describe('Lexador (Calango)', () => {
         });
 
         describe('Cenários de sucesso', () => {
-            
+
             it('Sucesso - Código vazio com símbolos algoritmo, principal e fimPrincipal', () => {
                 const resultado = lexador.mapear([
-                    'algoritmo tituloDoAlgoritmo;', 
-                    'principal', 
+                    'algoritmo tituloDoAlgoritmo;',
+                    'principal',
                     'fimPrincipal'
                 ], -1);
 
@@ -34,8 +35,8 @@ describe('Lexador (Calango)', () => {
 
             it('Sucesso - Método "escreva"', () => {
                 const resultado = lexador.mapear([
-                    'algoritmo tituloDoAlgoritmo;', 
-                    'principal', 
+                    'algoritmo tituloDoAlgoritmo;',
+                    'principal',
                     'escreva("Ola Mundo");',
                     'fimPrincipal'
                 ], -1);
@@ -47,7 +48,7 @@ describe('Lexador (Calango)', () => {
 
             it('Sucesso - Condicionais (se, senao)', () => {
                 const resultado = lexador.mapear([
-                    'algoritmo tituloDoAlgoritmo;'+ 
+                    'algoritmo tituloDoAlgoritmo;'+
                     'principal'+
                     'inteiro idade;'+
                     'escreva("Informe sua idade: ");'+
@@ -63,7 +64,7 @@ describe('Lexador (Calango)', () => {
                     'fimSe'+
                     'fimPrincipal'
                 ], -1);
-    
+
                 expect(resultado).toBeTruthy();
                 expect(resultado.simbolos).toHaveLength(45);
                 expect(resultado.erros).toHaveLength(0);

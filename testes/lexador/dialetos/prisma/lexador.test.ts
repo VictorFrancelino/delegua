@@ -1,11 +1,12 @@
-import { LexadorPrisma } from "../../../../fontes/lexador/dialetos";
+import { Lexador } from '../../../../fontes/lexador';
+import { PrismaConfig } from "../../../../fontes/lexador/dialetos";
 
 describe('Lexador (Prisma)', () => {
     describe('mapear()', () => {
-        let lexador: LexadorPrisma;
+        let lexador: Lexador;
 
         beforeEach(() => {
-            lexador = new LexadorPrisma();
+            lexador = new Lexador(PrismaConfig);
         });
 
         describe('Cenários de sucesso', () => {

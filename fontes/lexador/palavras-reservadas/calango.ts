@@ -1,6 +1,6 @@
-import tiposDeSimbolos from '../../../tipos-de-simbolos/calango';
+import tiposDeSimbolos from '../../tipos-de-simbolos/calango';
 
-export default {
+export const palavrasReservadas = {
     algoritmo: tiposDeSimbolos.ALGORITMO,
     principal: tiposDeSimbolos.PRINCIPAL,
     fimPrincipal: tiposDeSimbolos.FIM_PRINCIPAL,

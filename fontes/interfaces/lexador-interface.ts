@@ -8,10 +8,10 @@ export interface LexadorInterface<T> {
     atual: number;
     linha: number;
 
-    eDigito(caractere: string): boolean;
-    eAlfabeto(caractere: string): boolean;
-    eAlfabetoOuDigito(caractere: string): boolean;
-    eFinalDoCodigo(): boolean;
+    ehDigito(caractere: string): boolean;
+    ehAlfabeto(caractere: string): boolean;
+    ehAlfabetoOuDigito(caractere: string): boolean;
+    ehFinalDoCodigo(): boolean;
     avancar(): string | void;
     adicionarSimbolo(tipo: any, literal: any): void;
     simboloAtual(): string;

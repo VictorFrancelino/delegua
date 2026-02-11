@@ -1,4 +1,4 @@
-import tiposDeSimbolos from '../../../tipos-de-simbolos/portugol-ipt';
+import tiposDeSimbolos from '../../tipos-de-simbolos/portugol-ipt';
 
 export const palavrasReservadas = {
     entao: tiposDeSimbolos.ENTAO,

@@ -1,13 +1,14 @@
-import { LexadorPortugolIpt } from '../../../../fontes/lexador/dialetos/lexador-portugol-ipt';
+import { Lexador } from '../../../../fontes/lexador';
+import { PortugolIptConfig } from '../../../../fontes/lexador/dialetos';
 
 import tiposDeSimbolos from '../../../../fontes/tipos-de-simbolos/portugol-ipt';
 
 describe('Lexador (Portugol IPT)', () => {
     describe('mapear()', () => {
-        let lexador: LexadorPortugolIpt;
+        let lexador: Lexador;
 
         beforeEach(() => {
-            lexador = new LexadorPortugolIpt();
+            lexador = new Lexador(PortugolIptConfig);
         });
 
         describe('Cenários de sucesso', () => {
@@ -31,7 +32,7 @@ describe('Lexador (Portugol IPT)', () => {
         describe('Cenários de sucesso', () => {
             it('Sucesso - Olá Mundo', () => {
                 const resultado = lexador.mapear([
-                    'inicio', 
+                    'inicio',
                     'escrever "Olá mundo"',
                     'fim'
                 ], -1);

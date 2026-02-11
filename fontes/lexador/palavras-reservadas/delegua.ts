@@ -1,6 +1,6 @@
-import tiposDeSimbolos from '../tipos-de-simbolos/delegua';
+import tiposDeSimbolos from '../../tipos-de-simbolos/delegua';
 
-export const palavrasReservadasDelegua = {
+export const palavrasReservadas = {
     ajuda: tiposDeSimbolos.AJUDA,
     cada: tiposDeSimbolos.CADA,
     caso: tiposDeSimbolos.CASO,

@@ -1,11 +1,12 @@
-import { LexadorEguaClassico } from "../../../../fontes/lexador/dialetos";
+import { Lexador } from '../../../../fontes/lexador';
+import { EguaClassicoConfig } from "../../../../fontes/lexador/dialetos";
 
 describe('Lexador (Égua Clássico)', () => {
     describe('mapear()', () => {
-        let lexador: LexadorEguaClassico;
+        let lexador: Lexador;
 
         beforeEach(() => {
-            lexador = new LexadorEguaClassico();
+            lexador = new Lexador(EguaClassicoConfig);
         });
 
         describe('Cenários de sucesso', () => {

@@ -1,4 +1,4 @@
-import { palavrasReservadasDelegua } from './palavras-reservadas';
+import { palavrasReservadas } from './palavras-reservadas/delegua';
 import { TipoParadigma, gruposPalavrasParadigma, palavrasNeutras } from './mapeamento-paradigmas';
 
 /**
@@ -9,7 +9,7 @@ import { TipoParadigma, gruposPalavrasParadigma, palavrasNeutras } from './mapea
 export function gerarPalavrasReservadasPorParadigma(paradigma: TipoParadigma): Record<string, string> {
     // Se 'ambos', retorna todas as palavras reservadas
     if (paradigma === 'ambos') {
-        return { ...palavrasReservadasDelegua };
+        return { ...palavrasReservadas };
     }
 
     const palavrasFiltradas: Record<string, string> = {};

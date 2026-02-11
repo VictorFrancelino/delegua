@@ -1,13 +1,14 @@
-import { LexadorGuarani } from '../../../../fontes/lexador/dialetos/lexador-guarani';
+import { Lexador } from '../../../../fontes/lexador';
+import { GuaraniConfig } from '../../../../fontes/lexador/dialetos';
 
 import tiposDeSimbolos from '../../../../fontes/tipos-de-simbolos/guarani';
 
 describe('Lexador', () => {
     describe('mapear()', () => {
-        let lexador: LexadorGuarani;
+        let lexador: Lexador;
 
         beforeEach(() => {
-            lexador = new LexadorGuarani();
+            lexador = new Lexador(GuaraniConfig);
         });
 
         describe('Cenários de sucesso', () => {

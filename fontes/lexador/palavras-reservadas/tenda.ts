@@ -1,4 +1,4 @@
-import tiposDeSimbolos from '../../../tipos-de-simbolos/tenda';
+import tiposDeSimbolos from '../../tipos-de-simbolos/tenda';
 
 export const palavrasReservadas = {
     até: tiposDeSimbolos.ATÉ,

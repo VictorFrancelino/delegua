@@ -1,8 +1,8 @@
 import { SimboloInterface } from '../interfaces';
 import { RetornoLexador } from '../interfaces/retornos';
-import { ErroLexador } from './erro-lexador';
+import { ErroLexador } from './interfaces/erro-lexador';
 
-import { palavrasReservadasMicroGramatica as palavrasReservadas } from './palavras-reservadas';
+import { palavrasReservadasMicroGramatica as palavrasReservadas } from './palavras-reservadas/delegua';
 import { Simbolo } from './simbolo';
 
 import tiposDeSimbolos from '../tipos-de-simbolos/pitugues';
@@ -18,7 +18,7 @@ export class MicroLexadorPitugues {
     inicioSimbolo: number;
     atual: number;
     codigo: string;
-    
+
     // Aceita apenas interpolações no formato ${identificador} (equivalente a "f-string")
     regexInterpolacao: RegExp = /\$\{[a-zA-Z_][a-zA-Z0-9_]*\}/g;
     eDigito(caractere: string): boolean {

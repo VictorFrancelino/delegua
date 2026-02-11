@@ -1,4 +1,4 @@
-import tiposDeSimbolos from '../../../tipos-de-simbolos/egua-classico';
+import tiposDeSimbolos from '../../tipos-de-simbolos/egua-classico';
 
 export const palavrasReservadas = {
     e: tiposDeSimbolos.E,
